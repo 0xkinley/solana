@@ -34,6 +34,8 @@ pub mod voting {
   ) -> Result<()>{
 
     let candidate = &mut ctx.accounts.candidate;
+    let poll = &mut ctx.accounts.poll;
+    poll.candidate_amount += 1;
     candidate.candidate_name = candidate_name;
     candidate.candidate_votes = 0;
 
@@ -99,6 +101,11 @@ pub struct InitializeCandidate<'info>{
   #[account(mut)]
   pub signer: Signer<'info>,
 
+  #[account(
+    mut,
+    seeds = [poll_id.to_le_bytes().as_ref()],
+    bump
+  )]
   pub poll: Account<'info, PollAcount>,
 
   #[account(
@@ -120,7 +127,6 @@ pub struct Vote<'info>{
     pub signer: Signer<'info>,
 
   #[account(
-    mut,
     seeds = [poll_id.to_le_bytes().as_ref()],
     bump,
     )]
