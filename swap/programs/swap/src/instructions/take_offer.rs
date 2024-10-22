@@ -1,6 +1,9 @@
 use anchor_lang::prelude::*;
+
 use anchor_spl::{
+    
     associated_token::AssociatedToken,
+
     token_interface::{close_account, 
                       transfer_checked, 
                       CloseAccount, 
@@ -9,6 +12,8 @@ use anchor_spl::{
                       TokenInterface, 
                       TransferChecked}
 };
+
+
 
 use crate::Offer;
 
