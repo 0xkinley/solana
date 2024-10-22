@@ -43,7 +43,7 @@ describe('todolist', () => {
 
     // Assertions
     expect(list.listName).toEqual("MyToDoList");
-    expect(list.taskCount).toEqual(0);
+    expect(new anchor.BN(list.taskCount).toNumber()).toEqual(0);
   });
 
   it("Add Task", async () => {
@@ -60,7 +60,7 @@ describe('todolist', () => {
     let list = await todolistProgram.account.list.fetch(listAddress);
   
     console.log(list);
-    expect(list.taskCount).toEqual(1);
+    expect(new anchor.BN(list.taskCount).toNumber()).toEqual(1);
     expect(list.tasks[0].description).toEqual("Go to gym");
   });
   
