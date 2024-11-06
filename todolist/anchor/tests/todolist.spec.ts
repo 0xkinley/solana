@@ -9,11 +9,11 @@ const IDL = require("../target/idl/todolist.json");
 const todolistAddress = new PublicKey("6u7Wzgps8X8Qjd5AaqaF5mpKdfZzSfNt2MaPjATf2Z6Y");
 
 describe('todolist', () => {
-
   let context: ProgramTestContext;
-  let provider;
+  let provider: BankrunProvider;
   let todolistProgram: anchor.Program<Todolist>;
-
+  let listAddress: PublicKey;
+  const LIST_NAME = "MyToDoList";
 
   beforeAll(async () => {
     context = await startAnchor("", [{ name: "todolist", programId: todolistAddress }], []);
@@ -23,48 +23,71 @@ describe('todolist', () => {
       provider
     );
 
-    
+    // Pre-calculate the list address
+    [listAddress] = PublicKey.findProgramAddressSync(
+      [Buffer.from(LIST_NAME), context.payer.publicKey.toBuffer()],
+      todolistProgram.programId
+    );
   });
 
   it("Initialize ToDo List", async () => {
-
-    // Initialize the ToDo list
-    await todolistProgram.methods.initializeList("MyToDoList").rpc();
-
-    let [listAddress] = PublicKey.findProgramAddressSync(
-      [Buffer.from("MyToDoList"), context.payer.publicKey.toBuffer()],
-      todolistAddress
-    );
+    await todolistProgram.methods
+      .initializeList(LIST_NAME)
+      .accounts({
+        owner: context.payer.publicKey,
+      })
+      .rpc();
 
     let list = await todolistProgram.account.list.fetch(listAddress);
-
-
     console.log(list);
 
-    // Assertions
-    expect(list.listName).toEqual("MyToDoList");
+    expect(list.listName).toEqual(LIST_NAME);
     expect(list.taskCount).toEqual(0);
   });
 
   it("Add Task", async () => {
-    // Derive the PDA for the ToDoList, ensure it's consistent with InitializeList
-    let [listAddress] = PublicKey.findProgramAddressSync(
-      [Buffer.from("MyToDoList"), context.payer.publicKey.toBuffer()],
-      todolistAddress
-    );
-  
-    // Call the addTask method and ensure correct accounts are passed
-    await todolistProgram.methods.addTask("Go to gym").rpc();
-  
-    // Fetch the updated list account to verify the task was added
+    await todolistProgram.methods
+      .addTask(LIST_NAME, "Go to gym")
+      .accounts({
+        owner: context.payer.publicKey,
+        todolist: listAddress,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+
     let list = await todolistProgram.account.list.fetch(listAddress);
-  
-    console.log(list);
+    console.log("After adding task:", list);
+    
     expect(list.taskCount).toEqual(1);
     expect(list.tasks[0].description).toEqual("Go to gym");
   });
-  
 
-  
+  it("Complete Task", async () => {
+    await todolistProgram.methods
+      .completeTask(LIST_NAME, 0)
+      .accounts({
+        owner: context.payer.publicKey,
+        todolist: listAddress,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
 
+    let list = await todolistProgram.account.list.fetch(listAddress);
+    expect(list.tasks[0].isCompleted).toEqual(true);
+  });
+
+  it("Remove Task", async () => {
+    await todolistProgram.methods
+      .removeTask(LIST_NAME, 0)
+      .accounts({
+        owner: context.payer.publicKey,
+        todolist: listAddress,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+
+    let list = await todolistProgram.account.list.fetch(listAddress);
+    expect(list.taskCount).toEqual(0);
+    expect(list.tasks).toHaveLength(0);
+  });
 });
