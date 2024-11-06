@@ -18,9 +18,14 @@ pub mod todolist {
       Ok(())
     }
 
-    pub fn add_task(ctx: Context<AddTasks>, task: String) -> Result<()> {
+    pub fn add_task(ctx: Context<AddTasks>, _list_name: String, task: String) -> Result<()> {
 
       let todolist  = &mut ctx.accounts.todolist;
+
+      if todolist.tasks.len() >= List::MAX_TASKS {
+        return Err(ErrorCode::ListFull.into());
+      }
+      
       let task_state = Task{
         description: task,
         is_completed: false,
@@ -31,30 +36,30 @@ pub mod todolist {
       Ok(())
     }
 
-    pub fn remove_task(ctx: Context<RemoveTask>, task_index: u32) -> Result<()> {
+    pub fn remove_task(ctx: Context<RemoveTask>, _list_name: String, task_index: u32) -> Result<()> {
 
       let todolist = &mut ctx.accounts.todolist;
+
       if(task_index as usize) < todolist.tasks.len() {
         todolist.tasks.remove(task_index as usize);
         todolist.task_count -=1;
+        Ok(())
       } else {
         return Err(ErrorCode::TaskNotFound.into());
       }
-
-      Ok(())
     }
 
-    pub fn complete_task(ctx: Context<CompleteTask>, task_index: u32) -> Result<()> {
+    pub fn complete_task(ctx: Context<CompleteTask>, _list_name: String, task_index: u32) -> Result<()> {
 
       let todolist = &mut ctx.accounts.todolist;
+
       if(task_index as usize) < todolist.tasks.len() {
         let task = &mut todolist.tasks[task_index as usize];
             task.is_completed = true;
+            Ok(())
       } else {
         return Err(ErrorCode::TaskNotFound.into());
       }
-
-      Ok(())
     }
 
   
@@ -115,7 +120,9 @@ pub struct AddTasks<'info> {
   #[account(
     mut, 
     seeds = [list_name.as_bytes(), owner.key().as_ref()], 
-    bump)]
+    bump,
+    has_one = owner
+  )]
     pub todolist: Account<'info, List>,
 
     pub system_program: Program<'info, System>,
@@ -129,7 +136,9 @@ pub struct RemoveTask<'info> {
 
     #[account(mut, 
       seeds = [list_name.as_bytes(), owner.key().as_ref()], 
-      bump)]
+      bump,
+      has_one = owner
+    )]
     pub todolist: Account<'info, List>,
 
     pub system_program: Program<'info, System>,
@@ -144,7 +153,9 @@ pub struct CompleteTask<'info> {
     #[account(
       mut, 
       seeds = [list_name.as_bytes(), owner.key().as_ref()], 
-      bump)]
+      bump,
+      has_one = owner
+    )]
     pub todolist: Account<'info, List>,
 
     pub system_program: Program<'info, System>,
@@ -154,4 +165,6 @@ pub struct CompleteTask<'info> {
 pub enum ErrorCode {
     #[msg("Task not found in the ToDoList.")]
     TaskNotFound,
+    #[msg("The todo list is full.")]
+    ListFull,
 }
